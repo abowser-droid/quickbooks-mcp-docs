@@ -90,9 +90,15 @@ export async function qbRequest<T>(
     body: options.body ? JSON.stringify(options.body) : undefined,
   });
 
+  // Capture intuit_tid for debugging and support
+  const intuitTid = response.headers.get("intuit_tid");
+  if (intuitTid) {
+    console.error(`[QuickBooks] intuit_tid: ${intuitTid}`);
+  }
+
   if (!response.ok) {
     const error = await response.text();
-    throw new Error(`QuickBooks API error (${response.status}): ${error}`);
+    throw new Error(`QuickBooks API error (${response.status}): ${error}${intuitTid ? ` [intuit_tid: ${intuitTid}]` : ""}`);
   }
 
   return response.json() as Promise<T>;
