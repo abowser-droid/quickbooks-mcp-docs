@@ -1,6 +1,7 @@
 import { loadTokens, saveTokens, isTokenExpired, TokenData } from "../auth/token-store.js";
 import { getConfig } from "../config.js";
 import { getTokenEndpoint } from "../auth/discovery.js";
+import { logInfo, logError, logWarn } from "../logger.js";
 
 function getBaseUrl(environment: "sandbox" | "production"): string {
   return environment === "sandbox"
@@ -28,6 +29,7 @@ async function refreshAccessToken(tokens: TokenData): Promise<TokenData> {
 
   if (!response.ok) {
     const error = await response.text();
+    logError("Token refresh failed", { error });
     throw new Error(`Token refresh failed: ${error}`);
   }
 
@@ -43,6 +45,7 @@ async function refreshAccessToken(tokens: TokenData): Promise<TokenData> {
   };
 
   saveTokens(newTokens);
+  logInfo("Access token refreshed successfully");
   return newTokens;
 }
 
@@ -91,13 +94,22 @@ export async function qbRequest<T>(
   });
 
   // Capture intuit_tid for debugging and support
-  const intuitTid = response.headers.get("intuit_tid");
-  if (intuitTid) {
-    console.error(`[QuickBooks] intuit_tid: ${intuitTid}`);
-  }
+  const intuitTid = response.headers.get("intuit_tid") || undefined;
 
-  if (!response.ok) {
+  if (response.ok) {
+    logInfo("QuickBooks API request successful", {
+      endpoint,
+      statusCode: response.status,
+      intuit_tid: intuitTid,
+    });
+  } else {
     const error = await response.text();
+    logError("QuickBooks API request failed", {
+      endpoint,
+      statusCode: response.status,
+      intuit_tid: intuitTid,
+      error,
+    });
     throw new Error(`QuickBooks API error (${response.status}): ${error}${intuitTid ? ` [intuit_tid: ${intuitTid}]` : ""}`);
   }
 
